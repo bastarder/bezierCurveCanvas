@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <style>
+    body {
+      padding: 0;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .wrapper {
+      height: 400px;
+      width: 800px;
+      position: relative;
+      border: 1px solid #eee;
+    }
+
+    canvas {
+      position: absolute;
+    }
+
+    #level {
+      position: absolute;
+      top: -1px;
+      left: -1px;
+      z-index: 4;
+      width: 40px;
+      text-align: center;
+      font-size: 20px;
+      outline: none;
+      border: 1px solid #eee;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrapper">
+    <input id="level" value="4" />
+    <canvas id="stage_1" width="800" height="400" style="z-index: 1;"></canvas>
+    <canvas id="stage_2" width="800" height="400" style="z-index: 2;"></canvas>
+    <canvas id="stage_3" width="800" height="400" style="z-index: 3;"></canvas>
+  </div>
+</body>
+<script>
+
+  window.onload = function () {
+    const $ = document.querySelector.bind(document);
+    const stage_1 = $('#stage_1').getContext('2d');
+    const stage_2 = $('#stage_2').getContext('2d');
+    const stage_3 = $('#stage_3').getContext('2d');
+    const wrapper = $('.wrapper');
+    const perStep = 0.002;
+    const delay = 10;
+
+    let level = 4;
+    let isDrawing = false;
+    let pathTimer = null;
+    let points = [];
+
+    $('#level').addEventListener('change', function ({ target }) {
+      if (Number(target.value)) {
+        level = Number(target.value)
+        points = []
+        stage_1.clearRect(0, 0, 800, 800);
+        stage_2.clearRect(0, 0, 800, 800);
+        stage_3.clearRect(0, 0, 800, 800);
+        isDrawing = false;
+        clearInterval(pathTimer)
+      }
+    })
+
+    $('#stage_3').addEventListener('click', function ({ layerX: x, layerY: y }) {
+      if (isDrawing) {
+        return;
+      }
+
+      if (points.length >= level) {
+        stage_1.clearRect(0, 0, 800, 800);
+        stage_2.clearRect(0, 0, 800, 800);
+        stage_3.clearRect(0, 0, 800, 800);
+        points = []
+      }
+
+      points.push({ x, y });
+
+      stage_1.beginPath();
+      stage_1.arc(x, y, 2, 0, 2 * Math.PI);
+      stage_1.fill();
+
+      if (points.length > 1) {
+        const prevPoint = points[points.length - 2];
+        stage_1.moveTo(prevPoint.x, prevPoint.y);
+        stage_1.lineTo(x, y);
+        stage_1.stroke();
+        stage_1.closePath();
+      }
+
+      if (points.length === level) {
+        isDrawing = true;
+        renderPath()
+      }
+    })
+
+    function percentPoint(a, b, step) {
+      const per = step * perStep;
+      return {
+        x: a.x + (b.x - a.x) * per,
+        y: a.y + (b.y - a.y) * per
+      }
+    }
+
+    function renderLine(step, pointsList, color) {
+      let nextLevelPoints = []
+
+      for (let i = 0; i < pointsList.length; i++) {
+        if (pointsList[i + 1]) {
+          const point = percentPoint(pointsList[i], pointsList[i + 1], step);
+          nextLevelPoints.push(point)
+        }
+        if (i >= 1 && color > 1) {
+          stage_2.beginPath();
+          stage_2.strokeStyle = `hsl(${70 * color}, 50%, 50%)`;
+          stage_2.moveTo(pointsList[i].x, pointsList[i].y);
+          stage_2.lineTo(pointsList[i - 1].x, pointsList[i - 1].y);
+          stage_2.stroke();
+          stage_2.closePath();
+        }
+      }
+
+      if (nextLevelPoints.length === 1) {
+        const final = percentPoint(pointsList[0], pointsList[1], step);
+        stage_3.beginPath();
+        stage_3.fillStyle = 'red'
+        stage_3.arc(final.x, final.y, 1.5, 0, 2 * Math.PI);
+        stage_3.fill();
+        stage_3.closePath();
+      }
+
+      if (nextLevelPoints.length > 1) {
+        renderLine(step, nextLevelPoints, ++color)
+      }
+    }
+
+    function renderPath() {
+      let step = 0;
+      pathTimer = setInterval(() => {
+        stage_2.clearRect(0, 0, 800, 800);
+        renderLine(step, points, 1)
+        step++;
+        if (step * perStep > 1) {
+          clearInterval(pathTimer)
+          isDrawing = false;
+        }
+      }, delay)
+    }
+  }
+
+</script>
+<html>
